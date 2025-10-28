@@ -1,0 +1,44 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.pdb
+
+# PyInstaller
+dist/
+build/
+*.spec
+
+# Byte-compiled / optimized
+__pycache__/
+*.pyc
+
+# Virtual environments
+venv/
+env/
+.env/
+.venv/
+
+# Logs
+*.log
+/var/log/
+
+# Docker
+Dockerfile.clean
+Dockerfile.distroless
+
+# Editor files
+.vscode/
+*.swp
+*.swo
+*.bak
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Misc
+*.egg-info/
+*.egg
+pip-wheel-metadata/
