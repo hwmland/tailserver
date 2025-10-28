@@ -1,4 +1,4 @@
-Tailserver
+# Tailserver
 
 Simple Python TCP tail server. Note: the logfile is expected to be ASCII encoded; undecodable bytes will be replaced.
 
@@ -9,37 +9,42 @@ Parameters
 
 Usage:
 
-In PowerShell (host machine):
+## Run directly
 
-# Run directly
-
+```ps
 python tailserver.py C:\path\to\logfile --port 9000
+```
 
+```sh
 docker build -t tailserver:latest .
 docker run --rm -p 9000:9000 -v C:\path\to\logdir:/var/log tailserver:latest /var/log/myapp.log --port 9000
+```
 
-# Build Docker image
+## Build Docker image
 
+```sh
 docker build -t tailserver:latest .
+```
 
-# Run container (mount logfile)
+## Run container (mount logfile)
 
-docker run --rm -p 9000:9000 -v C:\path\to\logdir:/var/log tailserver:latest /var/log/myapp.log --port 9000
+```sh
+docker run --rm -p 9000:9000 -v logdir:/var/log tailserver:latest /var/log/myapp.log --port 9000
+```
 
-Docker Compose example (docker-compose.yml)
+## Docker Compose example (docker-compose.yml)
 
 ```yaml
-version: '3.8'
+version: "3.8"
 services:
-	tailserver:
-		image: tailserver:latest
-		build: .
-		ports:
-			- "9000:9000"
-		volumes:
-			- C:\\path\\to\\logdir:/var/log:ro
-		command: ["/var/log/myapp.log", "--host", "0.0.0.0", "--port", "9000"]
-		restart: unless-stopped
+  tailserver:
+    image: tailserver:latest
+    ports:
+      - "9000:9000"
+    volumes:
+      - mylogdir:/var/log:ro
+    command: ["/var/log/myapp.log", "--host", "0.0.0.0", "--port", "9000"]
+    restart: unless-stopped
 ```
 
 Clients can connect via telnet or nc and will receive new lines as they are appended to the logfile. The server handles logrotate copytruncate by detecting file size shrinking and inode changes.

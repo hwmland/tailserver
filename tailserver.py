@@ -20,8 +20,8 @@ async def tail_file(path, broadcaster, poll_interval=0.2):
     broadcaster(line: str)
     """
     try:
-        # Logfile is ASCII encoded; replace undecodable bytes if any
-        with open(path, "r", encoding="ascii", errors="replace") as f:
+        # Read logfile as UTF-8 (replace undecodable bytes if any)
+        with open(path, "r", encoding="utf-8", errors="replace") as f:
             # Seek to end
             f.seek(0, os.SEEK_END)
             inode = os.fstat(f.fileno()).st_ino
@@ -46,7 +46,7 @@ async def tail_file(path, broadcaster, poll_interval=0.2):
                     if cur_inode is not None and cur_inode != inode:
                         # Reopen the file and continue
                         try:
-                            newf = open(path, "r", encoding="ascii", errors="replace")
+                            newf = open(path, "r", encoding="utf-8", errors="replace")
                         except Exception:
                             await asyncio.sleep(poll_interval)
                             continue
@@ -62,6 +62,7 @@ async def tail_file(path, broadcaster, poll_interval=0.2):
                     except Exception:
                         pass
     except Exception as e:
+        # Log the exception for investigation
         print(f"tail_file error: {e}")
 
 
@@ -79,16 +80,51 @@ class Broadcaster:
             self.clients.discard(writer)
 
     async def broadcast(self, data: str):
+        # Copy clients under lock, but perform IO (which may block) without holding the lock
         async with self.lock:
-            to_remove = []
-            for w in list(self.clients):
+            clients = list(self.clients)
+
+        to_remove = []
+        # Write to all clients (non-blocking write), collect failures
+        for w in clients:
+            try:
+                # Send UTF-8 over the wire so non-ASCII characters are preserved
+                w.write(data.encode("utf-8"))
+            except Exception as e:
+                peer = None
                 try:
-                    w.write(data.encode("utf-8"))
-                    await w.drain()
+                    peer = w.get_extra_info('peername')
                 except Exception:
-                    to_remove.append(w)
-            for w in to_remove:
-                self.clients.discard(w)
+                    pass
+                print(f"Error writing to client {peer}: {e}")
+                to_remove.append(w)
+
+        # Drain each writer separately so a slow client doesn't block others
+        for w in clients:
+            if w in to_remove:
+                continue
+            try:
+                await w.drain()
+            except Exception as e:
+                peer = None
+                try:
+                    peer = w.get_extra_info('peername')
+                except Exception:
+                    pass
+                print(f"Draining failed for client {peer}: {e}")
+                to_remove.append(w)
+
+        if to_remove:
+            async with self.lock:
+                for w in to_remove:
+                    if w in self.clients:
+                        peer = None
+                        try:
+                            peer = w.get_extra_info('peername')
+                        except Exception:
+                            pass
+                        print(f"Removing client due to error: {peer}")
+                        self.clients.discard(w)
 
 
 async def handle_client(reader: asyncio.StreamReader, writer: asyncio.StreamWriter, broadcaster: Broadcaster):
@@ -125,7 +161,20 @@ async def main():
     addr = server.sockets[0].getsockname()
     print(f"Serving on {addr}, tailing {args.logfile}")
 
-    tail_task = asyncio.create_task(tail_file(args.logfile, broadcaster.broadcast))
+    async def run_tail_supervisor():
+        backoff = 1.0
+        while True:
+            try:
+                task = asyncio.create_task(tail_file(args.logfile, broadcaster.broadcast))
+                await task
+                # If task completes normally, log and restart after backoff
+                print("tail_file task exited normally; restarting after backoff")
+            except Exception as e:
+                print(f"tail_file task crashed: {e}")
+            await asyncio.sleep(backoff)
+            backoff = min(backoff * 2, 30.0)
+
+    supervisor = asyncio.create_task(run_tail_supervisor())
 
     async with server:
         await server.serve_forever()
