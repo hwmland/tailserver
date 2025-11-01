@@ -11,6 +11,14 @@ FROM alpine:3.19
 
 RUN apk add --no-cache python3
 
+# Image metadata (OCI labels)
+# - org.opencontainers.image.description: short description of the image
+# - org.opencontainers.licenses: SPDX license identifier
+# - org.opencontainers.source: URL to the source repository
+LABEL org.opencontainers.image.description="Simple Python tail-server that streams log lines over TCP"
+LABEL org.opencontainers.licenses="MIT"
+LABEL org.opencontainers.source="https://github.com/hwmland/tailserver"
+
 # Ensure Python output is unbuffered in Docker logs and encoding is UTF-8
 ENV PYTHONUNBUFFERED=1
 ENV PYTHONIOENCODING=utf-8
