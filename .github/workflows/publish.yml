@@ -1,6 +1,11 @@
 name: Build and publish Docker image
 
 on:
+  push:
+    branches:
+      - master
+    tags:
+      - "v*.*.*"
   workflow_dispatch: {}
 
 permissions:
@@ -37,3 +42,11 @@ jobs:
           tags: |
             ghcr.io/${{ github.repository }}:latest
             ghcr.io/${{ github.repository }}:${{ github.sha }}
+
+      - name: Tag image with git tag and push
+        if: startsWith(github.ref, 'refs/tags/')
+        run: |
+          # Pull the image pushed with the commit SHA, tag it with the git tag and push
+          docker pull ghcr.io/${{ github.repository }}:${{ github.sha }}
+          docker tag ghcr.io/${{ github.repository }}:${{ github.sha }} ghcr.io/${{ github.repository }}:${{ github.ref_name }}
+          docker push ghcr.io/${{ github.repository }}:${{ github.ref_name }}
