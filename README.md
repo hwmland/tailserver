@@ -17,19 +17,19 @@ python tailserver.py C:\path\to\logfile --port 9000
 
 ```sh
 docker build -t tailserver:latest .
-docker run --rm -p 9000:9000 -v C:\path\to\logdir:/var/log tailserver:latest /var/log/myapp.log --port 9000
 ```
 
 ## Build Docker image
 
 ```sh
 docker build -t tailserver:latest .
+docker run --rm -p 9000:9000 -v logdir:/var/log tailserver:latest /var/log/myapp.log --port 9000
 ```
 
 ## Run container (mount logfile)
 
 ```sh
-docker run --rm -p 9000:9000 -v logdir:/var/log tailserver:latest /var/log/myapp.log --port 9000
+docker run --rm -p 9000:9000 -v logdir:/var/log ghcr.io/hwmland/tailserver:latest /var/log/myapp.log --port 9000
 ```
 
 ## Docker Compose example (docker-compose.yml)
@@ -38,7 +38,7 @@ docker run --rm -p 9000:9000 -v logdir:/var/log tailserver:latest /var/log/myapp
 version: "3.8"
 services:
   tailserver:
-    image: tailserver:latest
+    image: ghcr.io/hwmland/tailserver:latest
     ports:
       - "9000:9000"
     volumes:
