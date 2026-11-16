@@ -42,3 +42,4 @@ Thumbs.db
 *.egg-info/
 *.egg
 pip-wheel-metadata/
+/devbuilder-reports/
